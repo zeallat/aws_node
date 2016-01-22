@@ -1,16 +1,34 @@
-var express = require('express')
-  , http = require('http')
-  , app = express()
-  , server = http.createServer(app);
+var WebSocketServer = require('websocket').server;
+var http = require('http');
 
-app.get('/', function (req, res) {
-  res.send('Hello /');
+var server = http.createServer(function (req, res) {
+  console.log('Received request for ' + req.url);
+  res.writeHead(404);
+  res.end();
 });
 
-app.get('/world.html', function (req, res) {
-  res.send('Hello World');
+server.listen(8000, function () {
+  console.log('Server is listening on port 8000');
 });
 
-server.listen(8000, function() {
-  console.log('Express server listening on port ' + server.address().port);
+wsServer = new WebSocketServer({
+  httpServer: server,
+  autoAcceptConnections: false
+});
+
+wsServer.on('request', function (request) {
+  var connection = request.accept('example-echo', request.origin);
+  connection.on('message', function (message) {
+    if (message.type === 'utf8') {
+      console.log('Received message: ' + message.utf8Data);
+      connection.sendUTF(message.utf8Data);
+    }
+    else if (message.type === 'binary') {
+      connection.sendBytes(message.binaryData);
+    }
+
+    connection.on('close', function (reasonCode, description) {
+      console.log('Peer ' + connection.remoteAddress + ' disconnected.');
+    });
+  });
 });
